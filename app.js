@@ -9,6 +9,8 @@ const flash = require('connect-flash');
 // Importar rutas
 const authRoutes = require('./routes/authRoutes');
 const restauranteRoutes = require('./routes/restauranteRoutes');
+const resenaRoutes = require('./routes/resenaRoutes');
+const menuRoutes = require('./routes/menuRoutes');
 const tipoCocinaRoutes = require('./routes/tipoCocinaRoutes');
 const ubicacionRoutes = require('./routes/ubicacionRoutes');
 
@@ -18,39 +20,29 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware básicos
+// Middlewares
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(methodOverride('_method'));
 app.use(cookieParser());
 
-// Configuración de sesión - DEBE IR ANTES DE FLASH
+// Configuración de sesión
 app.use(session({
   secret: 'gastronomia_session_2024_$ecret_k3y_pl@smic5',
   resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 horas
-  }
+  saveUninitialized: false
 }));
 
-// Configurar flash - DESPUÉS DE SESSION
 app.use(flash());
 
-// Middleware global para variables locales
+// Variables globales
 app.use((req, res, next) => {
   res.locals.user = req.user;
-  res.locals.success = req.flash('success');
-  res.locals.error = req.flash('error');
+  res.locals.messages = req.flash();
   next();
 });
-
-// Usar rutas
-app.use('/auth', authRoutes);
-app.use('/restaurantes', restauranteRoutes);
-app.use('/tipos-cocina', tipoCocinaRoutes);
-app.use('/ubicaciones', ubicacionRoutes);
 
 // Rutas principales
 app.get('/', (req, res) => {
@@ -58,6 +50,14 @@ app.get('/', (req, res) => {
     title: 'Sistema de Reseñas de Restaurantes'
   });
 });
+
+// Rutas de la aplicación
+app.use('/auth', authRoutes);           // <- Agregada esta línea
+app.use('/restaurantes', restauranteRoutes);
+app.use('/resenas', resenaRoutes);
+app.use('/menus', menuRoutes);
+app.use('/tipos-cocina', tipoCocinaRoutes);
+app.use('/ubicaciones', ubicacionRoutes);
 
 // Manejo de 404
 app.use((req, res) => {

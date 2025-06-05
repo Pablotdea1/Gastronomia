@@ -17,18 +17,40 @@ async function initDb() {
   try {
     const connection = await pool.getConnection();
 
-    // 1. Tabla Usuarios
+    // 1. Tabla Usuarios con nuevos campos
     await connection.query(`
         CREATE TABLE IF NOT EXISTS usuarios (
           id INT PRIMARY KEY AUTO_INCREMENT,
           nombre VARCHAR(100) NOT NULL,
           email VARCHAR(100) UNIQUE NOT NULL,
-          contraseña_hash VARCHAR(255) NOT NULL,
-          fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
+          password_hash VARCHAR(255) NOT NULL,
+          rol ENUM('admin', 'usuario') DEFAULT 'usuario',
+          activo BOOLEAN DEFAULT true,
+          token_recuperacion VARCHAR(255),
+          token_expiracion DATETIME,
+          fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+          ultima_sesion DATETIME,
+          UNIQUE INDEX email_index (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
-    // 2. Tabla Tipo_Cocina
+    // 2. Tabla de Sesiones (para manejo de JWT)
+    await connection.query(`
+        CREATE TABLE IF NOT EXISTS sesiones (
+          id INT PRIMARY KEY AUTO_INCREMENT,
+          usuario_id INT NOT NULL,
+          token VARCHAR(255) NOT NULL,
+          fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+          fecha_expiracion DATETIME NOT NULL,
+          dispositivo VARCHAR(255),
+          ip VARCHAR(45),
+          activa BOOLEAN DEFAULT true,
+          FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+          INDEX token_index (token)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+
+    // 3. Tabla Tipo_Cocina
     await connection.query(`
         CREATE TABLE IF NOT EXISTS tipo_cocina (
           id INT PRIMARY KEY AUTO_INCREMENT,
@@ -36,7 +58,7 @@ async function initDb() {
         )
       `);
 
-    // 3. Tabla Ubicaciones 
+    // 4. Tabla Ubicaciones 
     await connection.query(`
         CREATE TABLE IF NOT EXISTS ubicaciones (
           id INT PRIMARY KEY AUTO_INCREMENT,
@@ -46,7 +68,7 @@ async function initDb() {
         )
       `);
 
-    // 4. Tabla Restaurantes 
+    // 5. Tabla Restaurantes 
     await connection.query(`
         CREATE TABLE IF NOT EXISTS restaurantes (
           id INT PRIMARY KEY AUTO_INCREMENT,
@@ -60,7 +82,7 @@ async function initDb() {
         )
       `);
 
-    // 5. Tabla Menus 
+    // 6. Tabla Menus 
     await connection.query(`
         CREATE TABLE IF NOT EXISTS menus (
           id INT PRIMARY KEY AUTO_INCREMENT,
@@ -72,9 +94,9 @@ async function initDb() {
         )
       `);
 
-    // 6. Tabla Reseñas
+    // 7. Tabla Reseñas
     await connection.query(`
-       CREATE TABLE IF NOT EXISTS reseñas (
+       CREATE TABLE IF NOT EXISTS resenas (
        id INT PRIMARY KEY AUTO_INCREMENT,
        restaurante_id INT NOT NULL,
        calificacion TINYINT CHECK (calificacion BETWEEN 1 AND 5),
@@ -84,7 +106,7 @@ async function initDb() {
   )
 `);
 
-    // 7. Tabla Preferencias_Usuario
+    // 8. Tabla Preferencias_Usuario
     await connection.query(`
         CREATE TABLE IF NOT EXISTS preferencias_usuario (
           usuario_id INT NOT NULL,
@@ -102,6 +124,33 @@ async function initDb() {
   }
 }
 
-initDb();
+const bcrypt = require('bcryptjs');
+
+async function createDefaultAdmin() {
+  try {
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    await pool.query(`
+      INSERT IGNORE INTO usuarios (
+        nombre, 
+        email, 
+        password_hash,
+        rol
+      ) VALUES (
+        'Administrador',
+        'admin@gastronomia.com',
+        ?,
+        'admin'
+      )
+    `, [hashedPassword]);
+    console.log('Usuario administrador creado o ya existente');
+  } catch (error) {
+    console.error('Error al crear usuario admin:', error);
+  }
+}
+
+// Llamar a la función después de initDb()
+initDb().then(() => {
+  createDefaultAdmin();
+});
 
 module.exports = pool;

@@ -1,37 +1,91 @@
 const { validationResult } = require('express-validator');
 const Ubicacion = require('../models/ubicacion');
 
-// Crear nueva ubicación (con coordenadas)
-exports.crearUbicacion = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// Obtener todas las ubicaciones
+exports.index = async (req, res, next) => {
   try {
-    const { ciudad, direccion, lat, lng } = req.body;
+    const ubicaciones = await Ubicacion.getAll();
+    res.render('ubicacion/index', {
+      title: 'Ubicaciones',
+      ubicaciones
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    // Validar coordenadas
-    if (isNaN(lat) || isNaN(lng)) {
-      return res.status(400).json({ success: false, message: 'Latitud o longitud inválidas' });
+// Mostrar formulario para nueva ubicación
+exports.new = async (req, res, next) => {
+  try {
+    res.render('ubicacion/form', {
+      title: 'Nueva Ubicación',
+      ubicacion: {},
+      isEditing: false,
+      errors: []
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Crear nueva ubicación (con coordenadas)
+exports.create = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.render('ubicacion/form', {
+        title: 'Nueva Ubicación',
+        ubicacion: req.body,
+        isEditing: false,
+        errors: errors.array()
+      });
     }
 
-    // Formato correcto: POINT(lng lat)
-    const nuevaUbicacion = await Ubicacion.create({
-      ciudad,
-      direccion,
-      coordenadas: `${lng} ${lat}` // Longitud primero
-    });
+    const ubicacionData = {
+      ciudad: req.body.ciudad,
+      direccion: req.body.direccion,
+      coordenadas: `${req.body.lng} ${req.body.lat}` // Longitud primero
+    };
 
-    res.status(201).json({ success: true, data: nuevaUbicacion });
-
+    const nuevaUbicacion = await Ubicacion.create(ubicacionData);
+    res.redirect('/ubicaciones');
   } catch (error) {
-    console.error('Error en crearUbicacion:', error.message);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al registrar ubicación',
-      error: error.message // Detalle del error para depuración
+    next(error);
+  }
+};
+
+// Obtener detalles de una ubicación por ID
+exports.show = async (req, res, next) => {
+  try {
+    const ubicacion = await Ubicacion.getById(req.params.id);
+    if (!ubicacion) {
+      return res.status(404).render('error', {
+        title: 'Error',
+        message: 'Ubicación no encontrada'
+      });
+    }
+    res.render('ubicacion/show', {
+      title: `${ubicacion.ciudad} - ${ubicacion.direccion}`,
+      ubicacion
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Eliminar una ubicación por ID
+exports.delete = async (req, res, next) => {
+  try {
+    const success = await Ubicacion.delete(req.params.id);
+    if (!success) {
+      return res.status(404).render('error', {
+        title: 'Error',
+        message: 'Ubicación no encontrada'
+      });
+    }
+    res.redirect('/ubicaciones');
+  } catch (error) {
+    next(error);
   }
 };
 

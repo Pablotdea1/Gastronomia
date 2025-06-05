@@ -1,0 +1,29 @@
+<%- include('../partials/header', { title: 'Tipos de Cocina' }) %>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Tipos de Cocina</h1>
+    <a href="/tipos-cocina/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Nuevo Tipo de Cocina
+    </a>
+  </div>
+
+  <div class="row">
+    <% tiposCocina.forEach(tipo => { %>
+      <div class="col-md-4 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title"><%= tipo.nombre %></h5>
+            <form action="/tipos-cocina/<%= tipo.id %>?_method=DELETE" method="POST" style="display: inline;">
+              <button type="submit" class="btn btn-danger btn-sm float-end" onclick="return confirm('¿Estás seguro?')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

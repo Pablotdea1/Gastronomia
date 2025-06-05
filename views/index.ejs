@@ -1,0 +1,49 @@
+<%- include('partials/header', { title: 'Inicio' }) %>
+
+<div class="container mt-4">
+  <div class="jumbotron">
+    <h1 class="display-4">Sistema de Reseñas de Restaurantes</h1>
+    <p class="lead">Descubre y comparte experiencias gastronómicas.</p>
+    <hr class="my-4">
+    
+    <div class="row mt-4">
+      <div class="col-md-4">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Restaurantes</h5>
+            <p class="card-text">Explora nuestra selección de restaurantes.</p>
+            <a href="/restaurantes" class="btn btn-primary">
+              <i class="fas fa-utensils"></i> Ver Restaurantes
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Tipos de Cocina</h5>
+            <p class="card-text">Descubre diferentes estilos culinarios.</p>
+            <a href="/tipos-cocina" class="btn btn-success">
+              <i class="fas fa-book"></i> Ver Tipos de Cocina
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Ubicaciones</h5>
+            <p class="card-text">Encuentra restaurantes cerca de ti.</p>
+            <a href="/ubicaciones" class="btn btn-info">
+              <i class="fas fa-map-marker-alt"></i> Ver Ubicaciones
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

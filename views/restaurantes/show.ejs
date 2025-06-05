@@ -1,0 +1,186 @@
+<%- include('../partials/header', { title }) %>
+
+<div class="container mt-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+      <li class="breadcrumb-item"><a href="/restaurantes">Restaurantes</a></li>
+      <li class="breadcrumb-item active"><%= restaurante.nombre %></li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <div class="col-md-4">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-utensils"></i> Información del Restaurante</h5>
+        </div>
+        <div class="card-body">
+          <h4 class="card-title"><%= restaurante.nombre %></h4>
+          <p class="card-text">
+            <strong>Tipo de cocina:</strong> <%= restaurante.tipo_cocina || 'No especificado' %><br>
+            <strong>Precio promedio:</strong> $<%= restaurante.precio_promedio ? restaurante.precio_promedio.toLocaleString() : '0' %><br>
+            <strong>Ciudad:</strong> <%= restaurante.ciudad || 'No especificada' %><br>
+            <strong>Dirección:</strong> <%= restaurante.direccion || 'No especificada' %>
+          </p>
+
+          <% if (restaurante.calificacion_promedio !== undefined) { %>
+            <p class="card-text">
+              <strong>Calificación:</strong>
+              <div class="rating-stars">
+                <% for(let i = 1; i <= 5; i++) { %>
+                  <i class="fas fa-star <%= i <= restaurante.calificacion_promedio ? 'text-warning' : 'text-secondary' %>"></i>
+                <% } %>
+                <span class="ml-1">(<%= parseFloat(restaurante.calificacion_promedio).toFixed(1) %>)</span>
+              </div>
+            </p>
+          <% } %>
+
+          <div class="mt-3">
+            <a href="/restaurantes/<%= restaurante.id %>/edit" class="btn btn-warning">
+              <i class="fas fa-edit"></i> Editar
+            </a>
+            <form action="/restaurantes/<%= restaurante.id %>?_method=DELETE" method="POST" class="d-inline">
+              <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro?')">
+                <i class="fas fa-trash"></i> Eliminar
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <% if (restaurante.lat && restaurante.lng) { %>
+        <div class="card shadow-sm">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Ubicación</h5>
+          </div>
+          <div class="card-body">
+            <div id="map" style="height: 300px;"></div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-comments"></i> Reseñas</h5>
+        </div>
+        <div class="card-body">
+          <form id="formResena" class="mb-4">
+            <div class="form-group mb-3">
+              <label>Calificación</label>
+              <div class="stars">
+                <% for(let i = 5; i >= 1; i--) { %>
+                  <input type="radio" name="calificacion" value="<%= i %>" id="star<%= i %>">
+                  <label for="star<%= i %>"><i class="far fa-star"></i></label>
+                <% } %>
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="comentario">Comentario</label>
+              <textarea class="form-control" id="comentario" name="comentario" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-paper-plane"></i> Publicar Reseña
+            </button>
+          </form>
+
+          <div id="listaResenas">
+            <!-- Las reseñas se cargarán aquí -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if (restaurante.lat && restaurante.lng) { %>
+  <!-- Incluir Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const map = L.map('map').setView([<%= restaurante.lat %>, <%= restaurante.lng %>], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      L.marker([<%= restaurante.lat %>, <%= restaurante.lng %>])
+        .addTo(map)
+        .bindPopup('<%= restaurante.nombre %><br><%= restaurante.direccion %>');
+    });
+  </script>
+<% } %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const restauranteId = '<%= restaurante.id %>';
+  cargarResenas();
+
+  // Manejar envío de reseñas
+  document.getElementById('formResena').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const calificacion = document.querySelector('input[name="calificacion"]:checked')?.value;
+    const comentario = document.getElementById('comentario').value;
+
+    if (!calificacion) {
+      alert('Por favor selecciona una calificación');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/resenas/${restauranteId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ calificacion, comentario })
+      });
+
+      if (response.ok) {
+        document.getElementById('comentario').value = '';
+        document.querySelector('input[name="calificacion"]:checked').checked = false;
+        cargarResenas();
+      } else {
+        alert('Error al publicar la reseña');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  });
+
+  // Función para cargar reseñas
+  async function cargarResenas() {
+    try {
+      const response = await fetch(`/resenas/${restauranteId}`);
+      const data = await response.json();
+      
+      const listaResenas = document.getElementById('listaResenas');
+      if (!data.data || data.data.length === 0) {
+        listaResenas.innerHTML = '<div class="alert alert-info">No hay reseñas aún.</div>';
+        return;
+      }
+
+      listaResenas.innerHTML = data.data.map(resena => `
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="rating-stars">
+                ${Array(5).fill().map((_, i) => 
+                  `<i class="fas fa-star ${i < resena.calificacion ? 'text-warning' : 'text-secondary'}"></i>`
+                ).join('')}
+              </div>
+              <small class="text-muted">${resena.fecha_formateada}</small>
+            </div>
+            <p class="card-text mt-2">${resena.comentario || ''}</p>
+          </div>
+        </div>
+      `).join('');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+});
+</script>
+
+<%- include('../partials/footer') %>

@@ -2,8 +2,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const methodOverride = require('method-override');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const flash = require('connect-flash');
 
 // Importar rutas
+const authRoutes = require('./routes/authRoutes');
 const restauranteRoutes = require('./routes/restauranteRoutes');
 const resenaRoutes = require('./routes/resenaRoutes');
 const menuRoutes = require('./routes/menuRoutes');
@@ -22,6 +26,23 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(methodOverride('_method'));
+app.use(cookieParser());
+
+// Configuración de sesión
+app.use(session({
+  secret: 'gastronomia_session_2024_$ecret_k3y_pl@smic5',
+  resave: false,
+  saveUninitialized: false
+}));
+
+app.use(flash());
+
+// Variables globales
+app.use((req, res, next) => {
+  res.locals.user = req.user;
+  res.locals.messages = req.flash();
+  next();
+});
 
 // Rutas principales
 app.get('/', (req, res) => {
@@ -31,6 +52,7 @@ app.get('/', (req, res) => {
 });
 
 // Rutas de la aplicación
+app.use('/auth', authRoutes);           // <- Agregada esta línea
 app.use('/restaurantes', restauranteRoutes);
 app.use('/resenas', resenaRoutes);
 app.use('/menus', menuRoutes);

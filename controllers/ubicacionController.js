@@ -29,14 +29,14 @@ exports.new = async (req, res, next) => {
 };
 
 // Crear nueva ubicación (con coordenadas)
-exports.create = async (req, res, next) => {
+exports.create = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      req.flash('error', 'Por favor corrija los errores en el formulario');
       return res.render('ubicacion/form', {
         title: 'Nueva Ubicación',
         ubicacion: req.body,
-        isEditing: false,
         errors: errors.array()
       });
     }
@@ -44,13 +44,21 @@ exports.create = async (req, res, next) => {
     const ubicacionData = {
       ciudad: req.body.ciudad,
       direccion: req.body.direccion,
-      coordenadas: `${req.body.lng} ${req.body.lat}` // Longitud primero
+      lat: req.body.lat || 0,  // Asegurarse de que estos campos existan en el formulario
+      lng: req.body.lng || 0
     };
 
-    const nuevaUbicacion = await Ubicacion.create(ubicacionData);
+    await Ubicacion.create(ubicacionData);
+    req.flash('success', 'Ubicación creada exitosamente');
     res.redirect('/ubicaciones');
   } catch (error) {
-    next(error);
+    console.error('Error al crear ubicación:', error);
+    req.flash('error', 'Error al crear la ubicación');
+    res.render('ubicacion/form', {
+      title: 'Nueva Ubicación',
+      ubicacion: req.body,
+      errors: [{ msg: 'Error al crear la ubicación' }]
+    });
   }
 };
 

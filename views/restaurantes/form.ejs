@@ -1,0 +1,102 @@
+<%- include('../partials/header', { title }) %>
+
+<div class="container mt-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0">
+        <i class="fas fa-<%= isEditing ? 'edit' : 'plus' %>"></i> 
+        <%= title %>
+      </h4>
+    </div>
+    <div class="card-body">
+      <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-danger">
+          <% errors.forEach(error => { %>
+            <p class="mb-0"><%= error.msg %></p>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <form action="<%= isEditing ? `/restaurantes/${restaurante.id}?_method=PUT` : '/restaurantes' %>" method="POST">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group mb-3">
+              <label for="nombre">Nombre del restaurante</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="nombre" 
+                name="nombre" 
+                value="<%= restaurante.nombre || '' %>"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group mb-3">
+              <label for="tipo_cocina_id">Tipo de cocina</label>
+              <select class="form-control" id="tipo_cocina_id" name="tipo_cocina_id" required>
+                <option value="">Seleccione un tipo de cocina</option>
+                <% tiposCocina.forEach(tipo => { %>
+                  <option 
+                    value="<%= tipo.id %>"
+                    <%= restaurante.tipo_cocina_id == tipo.id ? 'selected' : '' %>
+                  >
+                    <%= tipo.nombre %>
+                  </option>
+                <% }); %>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group mb-3">
+              <label for="ubicacion_id">Ubicación</label>
+              <select class="form-control" id="ubicacion_id" name="ubicacion_id" required>
+                <option value="">Seleccione una ubicación</option>
+                <% ubicaciones.forEach(ubicacion => { %>
+                  <option 
+                    value="<%= ubicacion.id %>"
+                    <%= restaurante.ubicacion_id == ubicacion.id ? 'selected' : '' %>
+                  >
+                    <%= ubicacion.ciudad %> - <%= ubicacion.direccion %>
+                  </option>
+                <% }); %>
+              </select>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group mb-3">
+              <label for="precio_promedio">Precio promedio</label>
+              <input 
+                type="number" 
+                class="form-control" 
+                id="precio_promedio" 
+                name="precio_promedio"
+                value="<%= restaurante.precio_promedio || '' %>"
+                min="0"
+                step="100"
+                required
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group d-flex justify-content-between mt-3">
+          <a href="/restaurantes" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> <%= isEditing ? 'Actualizar' : 'Guardar' %>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

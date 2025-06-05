@@ -1,0 +1,53 @@
+<%- include('../partials/header', { title }) %>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Ubicaciones</h1>
+    <a href="/ubicaciones/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Nueva Ubicación
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <% if (ubicaciones && ubicaciones.length > 0) { %>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Ciudad</th>
+                <th>Dirección</th>
+                <th>Coordenadas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% ubicaciones.forEach(ubicacion => { %>
+                <tr>
+                  <td><%= ubicacion.ciudad %></td>
+                  <td><%= ubicacion.direccion %></td>
+                  <td>
+                    Lat: <%= ubicacion.lat.toFixed(6) %><br>
+                    Lng: <%= ubicacion.lng.toFixed(6) %>
+                  </td>
+                  <td>
+                    <a href="/ubicaciones/<%= ubicacion.id %>" class="btn btn-sm btn-info">Ver</a>
+                    <form action="/ubicaciones/<%= ubicacion.id %>?_method=DELETE" method="POST" style="display: inline;">
+                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">Eliminar</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="alert alert-info">
+          No hay ubicaciones registradas.
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

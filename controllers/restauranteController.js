@@ -1,72 +1,165 @@
 const { validationResult } = require('express-validator');
-const Restaurante = require('../models/restaurante'); 
+const Restaurante = require('../models/restaurante');
+const TipoCocina = require('../models/tipoCocina');
+const Ubicacion = require('../models/ubicacion');
 
-exports.index = async (req, res) => {
+// Listar restaurantes
+exports.index = async (req, res, next) => {
   try {
     const restaurantes = await Restaurante.getAll();
-    res.json({ success: true, data: restaurantes });
+    res.render('restaurantes/index', {
+      title: 'Listado de Restaurantes',
+      restaurantes
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener restaurantes' });
+    next(error);
   }
 };
 
-// Crear un restaurante
-exports.create = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// Mostrar formulario de nuevo restaurante
+exports.new = async (req, res, next) => {
   try {
-    const nuevoRestaurante = await Restaurante.create(req.body);
-    res.status(201).json({ success: true, data: nuevoRestaurante });
+    // Obtener tipos de cocina y ubicaciones al mismo tiempo
+    const [tiposCocina, ubicaciones] = await Promise.all([
+      TipoCocina.getAll(),
+      Ubicacion.getAll()
+    ]);
+
+    res.render('restaurantes/form', {
+      title: 'Nuevo Restaurante',
+      restaurante: {},
+      tiposCocina,
+      ubicaciones,
+      isEditing: false,
+      errors: []
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al crear restaurante' });
+    next(error);
   }
 };
 
-// Obtener detalles de un restaurante
-exports.show = async (req, res) => {
+// Crear restaurante
+exports.create = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      // Si hay errores, volver a cargar el formulario con los datos
+      const [tiposCocina, ubicaciones] = await Promise.all([
+        TipoCocina.getAll(),
+        Ubicacion.getAll()
+      ]);
+
+      return res.render('restaurantes/form', {
+        title: 'Nuevo Restaurante',
+        restaurante: req.body,
+        tiposCocina,
+        ubicaciones,
+        isEditing: false,
+        errors: errors.array()
+      });
+    }
+
+    await Restaurante.create(req.body);
+    res.redirect('/restaurantes');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Mostrar restaurante
+exports.show = async (req, res, next) => {
   try {
     const restaurante = await Restaurante.getByIdWithDetails(req.params.id);
+    
     if (!restaurante) {
-      return res.status(404).json({ success: false, message: 'Restaurante no encontrado' });
+      return res.status(404).render('error', {
+        title: 'Error',
+        message: 'Restaurante no encontrado'
+      });
     }
-    res.json({ success: true, data: restaurante });
+
+    // Asegurar que los valores numéricos existan
+    restaurante.calificacion_promedio = parseFloat(restaurante.calificacion_promedio) || 0;
+    restaurante.precio_promedio = parseFloat(restaurante.precio_promedio) || 0;
+
+    res.render('restaurantes/show', {
+      title: restaurante.nombre,
+      restaurante
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener detalles' });
+    next(error);
   }
 };
 
-// Actualizar un restaurante
-exports.update = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// Mostrar formulario de edición
+exports.edit = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const success = await Restaurante.update(id, req.body);
-    if (!success) {
-      return res.status(404).json({ success: false, message: 'Restaurante no encontrado' });
+    const [restaurante, tiposCocina, ubicaciones] = await Promise.all([
+      Restaurante.getById(req.params.id),
+      TipoCocina.getAll(),
+      Ubicacion.getAll()
+    ]);
+
+    if (!restaurante) {
+      return res.status(404).render('error', {
+        title: 'Error',
+        message: 'Restaurante no encontrado'
+      });
     }
-    res.json({ success: true, message: 'Restaurante actualizado' });
+
+    res.render('restaurantes/form', {
+      title: `Editar ${restaurante.nombre}`,
+      restaurante,
+      tiposCocina,
+      ubicaciones,
+      isEditing: true,
+      errors: []
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al actualizar' });
+    next(error);
   }
 };
 
-// Eliminar un restaurante
-exports.delete = async (req, res) => {
+// Actualizar restaurante
+exports.update = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const success = await Restaurante.delete(id);
-    if (!success) {
-      return res.status(404).json({ success: false, message: 'Restaurante no encontrado' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const tiposCocina = await TipoCocina.getAll();
+      return res.render('restaurantes/form', {
+        title: 'Editar Restaurante',
+        restaurante: { ...req.body, id: req.params.id },
+        tiposCocina,
+        isEditing: true,
+        errors: errors.array()
+      });
     }
-    res.json({ success: true, message: 'Restaurante eliminado' });
+
+    const success = await Restaurante.update(req.params.id, req.body);
+    if (!success) {
+      return res.status(404).render('error', {
+        title: 'Error',
+        message: 'Restaurante no encontrado'
+      });
+    }
+    res.redirect('/restaurantes');
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al eliminar' });
+    next(error);
+  }
+};
+
+// Eliminar restaurante
+exports.delete = async (req, res, next) => {
+  try {
+    const success = await Restaurante.delete(req.params.id);
+    if (!success) {
+      return res.status(404).render('error', {
+        title: 'Error',
+        message: 'Restaurante no encontrado'
+      });
+    }
+    res.redirect('/restaurantes');
+  } catch (error) {
+    next(error);
   }
 };

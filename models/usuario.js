@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const bcrypt = require('bcryptjs');
 
 class Usuario {
     static async getAll() {
@@ -31,17 +32,21 @@ class Usuario {
         }
     }
 
-    static async create(usuario) {
+    static async create({ nombre, email, password, rol = 'usuario' }) {
+        const connection = await pool.getConnection();
         try {
-            const { nombre, email, contraseña_hash } = usuario;
-            const [result] = await pool.query(
-                'INSERT INTO Usuarios (nombre, email, contraseña_hash) VALUES (?, ?, ?)',
-                [nombre, email, contraseña_hash]
+            const hashedPassword = await bcrypt.hash(password, 10);
+            
+            const [result] = await connection.query(
+                'INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)',
+                [nombre, email, hashedPassword, rol]
             );
+            
             return result.insertId;
         } catch (error) {
-            console.error('Error al crear usuario:', error);
             throw error;
+        } finally {
+            connection.release();
         }
     }
 
@@ -78,6 +83,54 @@ class Usuario {
             console.error('Error al generar recomendaciones:', error);
             throw error;
         }
+    }
+
+    static async findByEmail(email) {
+        const connection = await pool.getConnection();
+        try {
+            const [rows] = await connection.query(
+                'SELECT * FROM usuarios WHERE email = ?',
+                [email]
+            );
+            return rows[0];
+        } catch (error) {
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    static async findById(id) {
+        const connection = await pool.getConnection();
+        try {
+            const [rows] = await connection.query(
+                'SELECT id, nombre, email, rol FROM usuarios WHERE id = ?',
+                [id]
+            );
+            return rows[0];
+        } catch (error) {
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    static async updateLastLogin(id) {
+        const connection = await pool.getConnection();
+        try {
+            await connection.query(
+                'UPDATE usuarios SET ultima_sesion = CURRENT_TIMESTAMP WHERE id = ?',
+                [id]
+            );
+        } catch (error) {
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    static async comparePassword(password, hashedPassword) {
+        return await bcrypt.compare(password, hashedPassword);
     }
 }
 

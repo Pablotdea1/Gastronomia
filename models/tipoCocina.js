@@ -2,7 +2,13 @@ const pool = require('../config/database');
 
 class TipoCocina {
   static async getAll() {
-    const [rows] = await pool.query('SELECT * FROM Tipo_Cocina');
+    const [rows] = await pool.query(`
+      SELECT 
+        id,
+        nombre
+      FROM tipo_cocina
+      ORDER BY nombre ASC
+    `);
     return rows;
   }
 

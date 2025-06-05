@@ -1,50 +1,68 @@
 const TipoCocina = require('../models/tipoCocina');
+const { validationResult } = require('express-validator');
 
-exports.obtenerTiposCocina = async (req, res) => {
+exports.index = async (req, res) => {
   try {
-    const tipos = await TipoCocina.getAll();
-    res.json({ success: true, data: tipos });
+    const tiposCocina = await TipoCocina.getAll();
+    res.render('tipo_cocina/index', {
+      title: 'Tipos de Cocina',
+      tiposCocina
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener tipos de cocina' });
+    res.status(500).render('error', {
+      title: 'Error',
+      message: 'Error al cargar tipos de cocina'
+    });
   }
 };
 
+exports.new = async (req, res) => {
+  res.render('tipo_cocina/form', {
+    title: 'Nuevo Tipo de Cocina',
+    tipo_cocina: {},
+    errors: []
+  });
+};
 
-exports.crearTipoCocina = async (req, res) => {
-  const { nombre } = req.body;
-
- 
-  if (!nombre || nombre.trim() === '') {
-    return res.status(400).json({ success: false, message: 'El nombre es obligatorio' });
-  }
-
+exports.create = async (req, res) => {
   try {
-   
-    const tipoExistente = await TipoCocina.getByNombre(nombre);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.render('tipo_cocina/form', {
+        title: 'Nuevo Tipo de Cocina',
+        tipo_cocina: req.body,
+        errors: errors.array()
+      });
+    }
+
+    const tipoExistente = await TipoCocina.getByNombre(req.body.nombre);
     if (tipoExistente) {
-      return res.status(400).json({ success: false, message: 'Este tipo ya existe' });
+      return res.render('tipo_cocina/form', {
+        title: 'Nuevo Tipo de Cocina',
+        tipo_cocina: req.body,
+        errors: [{ msg: 'Este tipo de cocina ya existe' }]
+      });
     }
 
-    
-    const nuevoTipo = await TipoCocina.create({ nombre });
-    res.status(201).json({ success: true, data: { id: nuevoTipo, nombre } });
-    
+    await TipoCocina.create({ nombre: req.body.nombre });
+    res.redirect('/tipos-cocina');
   } catch (error) {
-    console.error('Error en create:', error);
-    res.status(500).json({ success: false, message: 'Error interno al crear tipo' });
+    res.render('tipo_cocina/form', {
+      title: 'Nuevo Tipo de Cocina',
+      tipo_cocina: req.body,
+      errors: [{ msg: 'Error al crear tipo de cocina' }]
+    });
   }
 };
 
-exports.deleteTipoCocina = async (req, res) => {
+exports.delete = async (req, res) => {
   try {
-    const { id } = req.params;
-    const success = await TipoCocina.delete(id);
-    if (!success) {
-      return res.status(404).json({ success: false, message: 'Tipo no encontrado' });
-    }
-    res.json({ success: true, message: 'Tipo eliminado' });
+    await TipoCocina.delete(req.params.id);
+    res.redirect('/tipos-cocina');
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al eliminar tipo' });
+    res.status(500).render('error', {
+      title: 'Error',
+      message: 'Error al eliminar tipo de cocina'
+    });
   }
 };
-

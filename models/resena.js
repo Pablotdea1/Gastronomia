@@ -1,42 +1,52 @@
 const pool = require('../config/database');
 
 class Resena {
-  static async getByRestaurant(restauranteId) {
-    try {
-      const [rows] = await pool.query(`
-        SELECT r.*, u.nombre AS usuario_nombre 
-        FROM Reseñas r
-        JOIN Usuarios u ON r.usuario_id = u.id
-        WHERE restaurante_id = ?
-      `, [restauranteId]);
-      return rows;
-    } catch (error) {
-      console.error(`Error al obtener reseñas del restaurante ${restauranteId}:`, error);
-      throw error;
-    }
-  }
-
-  static async getByUserAndRestaurant(usuarioId, restauranteId) {
-    try {
-      const [rows] = await pool.query(
-        'SELECT * FROM Reseñas WHERE usuario_id = ? AND restaurante_id = ?',
-        [usuarioId, restauranteId]
-      );
-      return rows[0];
-    } catch (error) {
-      console.error(`Error al verificar reseña existente:`, error);
-      throw error;
-    }
-  }
-
   static async create(resenaData) {
     try {
       const { restaurante_id, calificacion, comentario } = resenaData;
       const [result] = await pool.query(
-        'INSERT INTO reseñas (restaurante_id, calificacion, comentario) VALUES (?, ?, ?)',
-        [restaurante_id, calificacion, comentario || null]
+        'INSERT INTO resenas (restaurante_id, calificacion, comentario) VALUES (?, ?, ?)',
+        [restaurante_id, calificacion, comentario]
       );
+
+      // Actualizar calificación promedio del restaurante
+      await this.actualizarCalificacionPromedio(restaurante_id);
+      
       return { id: result.insertId, ...resenaData };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async getByRestaurante(restauranteId) {
+    try {
+      const [rows] = await pool.query(`
+        SELECT 
+          r.*,
+          DATE_FORMAT(r.fecha, '%d/%m/%Y %H:%i') as fecha_formateada,
+          COALESCE(u.nombre, 'Anónimo') as autor
+        FROM resenas r
+        LEFT JOIN usuarios u ON r.usuario_id = u.id
+        WHERE r.restaurante_id = ?
+        ORDER BY r.fecha DESC
+      `, [restauranteId]);
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async actualizarCalificacionPromedio(restauranteId) {
+    try {
+      await pool.query(`
+        UPDATE restaurantes r
+        SET calificacion_promedio = (
+          SELECT AVG(calificacion)
+          FROM resenas
+          WHERE restaurante_id = ?
+        )
+        WHERE r.id = ?
+      `, [restauranteId, restauranteId]);
     } catch (error) {
       throw error;
     }
